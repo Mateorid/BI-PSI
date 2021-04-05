@@ -12,8 +12,12 @@ public class ClientHandler implements Runnable {
     private final DataOutputStream out;
     private final StateMachine stateMachine;
 
-    private Integer x;
-    private Integer y;
+    //Robot information
+    //todo make a class for this and put in stateMachine
+//    private Integer x;
+//    private Integer y;
+//    private Direction direction;
+//    private Integer idHash;
 
 
     public ClientHandler(Socket socket) throws IOException {
@@ -28,17 +32,20 @@ public class ClientHandler implements Runnable {
         String line;
 
         try {
-            socket.setSoTimeout(socket.getSoTimeout()); //todo
+            socket.setSoTimeout(stateMachine.getTimeout());     //todo
 
             while (true) {
                 line = in.readLine();
-                if (line.endsWith("" + 0x7 + 0x8)) {
-                    //todo
-                }else{
-                    //todo
+                if (line.endsWith("" + 0x7 + 0x8)) {        //todo works?
+                    //todo pass to state machine here
+                } else {
+                    out.writeChars(StateMachine.SERVER_SYNTAX_ERROR);
+                    out.flush();
+                    exit();
+                    break;
                 }
             }
-
+            exit();
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -53,6 +60,17 @@ public class ClientHandler implements Runnable {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private void exit() {
+        System.out.println("----EXITING----");
+        try {
+            in.close();
+            out.close();
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 }
