@@ -12,14 +12,6 @@ public class ClientHandler implements Runnable {
     private final DataOutputStream out;
     private final StateMachine stateMachine;
 
-    //Robot information
-    //todo make a class for this and put in stateMachine
-//    private Integer x;
-//    private Integer y;
-//    private Direction direction;
-//    private Integer idHash;
-
-
     public ClientHandler(Socket socket) throws IOException {
         this.socket = socket;
         this.in = new BufferedReader(new InputStreamReader(socket.getInputStream())); //todo does this work?
@@ -30,15 +22,15 @@ public class ClientHandler implements Runnable {
 
     public void run() {
         String line;
-
         try {
             socket.setSoTimeout(stateMachine.getTimeout());     //todo
-
             while (true) {
                 line = in.readLine();
                 if (line.endsWith("" + 0x7 + 0x8)) {        //todo works?
-                    //todo pass to state machine here
-                } else {
+                    out.writeChars(stateMachine.next(line));
+                    out.flush();
+
+                } else {//todo this is wrong since it can send only parts of the message :(
                     out.writeChars(StateMachine.SERVER_SYNTAX_ERROR);
                     out.flush();
                     exit();

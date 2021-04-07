@@ -1,5 +1,7 @@
 package cz.cvut.fit.psi.robots;
 
+import java.util.Objects;
+
 public class Robot {
     private Integer x;
     private Integer y;
@@ -27,6 +29,14 @@ public class Robot {
 
     public String getName() {
         return name;
+    }
+
+    public int hash() {
+        int tmp = 0;
+        for (int i = 0; i < name.length(); i++) {
+            tmp += name.charAt(i);
+        }
+        return ((tmp * 1000) % 65536);
     }
 
     public Direction getDirection() {
