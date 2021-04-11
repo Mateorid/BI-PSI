@@ -6,6 +6,7 @@ import java.util.Scanner;
 
 // ClientHandler class inspired from: https://www.geeksforgeeks.org/multithreaded-servers-in-java/
 public class ClientHandler implements Runnable {
+    private static final String ending = "\u0007\u0008";
     private final Socket socket;
     private final BufferedReader in;
     //    private final Scanner in;
@@ -27,6 +28,7 @@ public class ClientHandler implements Runnable {
             while (true) {
                 line = in.readLine();
                 if (line.endsWith("" + 0x7 + 0x8)) {        //todo works?
+                    //todo check if sent message is SERVER_OK & if it is send empty msg to get the server to ask for COORDINATES
                     out.writeChars(stateMachine.next(line));
                     out.flush();
 

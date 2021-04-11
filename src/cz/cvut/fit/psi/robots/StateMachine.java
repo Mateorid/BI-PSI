@@ -20,6 +20,10 @@ public class StateMachine {
 
     private static final int TIMEOUT = 1000;            //timeout time in milliseconds
     private static final int TIMEOUT_CHARGING = 5000;   //timeout charging time in milliseconds
+    private static final String ending = "\u0007\u0008";
+    /*alternative:*/
+//    char TERM_SEQ = (char)7;
+//    char TERM_SEQ2 = (char)8;
 
     private static List<KeyPair> keys;
     private Boolean charging;
@@ -58,14 +62,20 @@ public class StateMachine {
                 return sKeyCheck(input);
             }
             case SERVER_CONFIRM -> {
+                return cKeyCheck(input);
             }
             case SERVER_OK_STATE -> {
+                state = FIRST_POS;
+                return SERVER_TURN_LEFT;
             }
-            case LOGIN_FAILED -> {
+            case FIRST_POS -> {
+                return firstPos(input);
             }
-            case GETTING_POS -> {
+            case SECOND_POS -> {
+                return secondPos(input);
             }
             case NAVIGATING -> {
+                return navigate(input);
             }
             case CHARGING -> {
             }
@@ -77,6 +87,7 @@ public class StateMachine {
 
     private String initCheck(String input) {
         if (input.length() < 20) {
+            //todo exit?
             return SERVER_SYNTAX_ERROR;
         }
         robot = new Robot(input.substring(0, input.length() - 2));
@@ -89,12 +100,14 @@ public class StateMachine {
         try {
             ID = Integer.parseInt(input);
             if (ID < 0 || ID > 4) {
+                //todo exit?
                 return SERVER_KEY_OUT_OF_RANGE_ERROR;
             } else {
                 state = SERVER_CONFIRM;
                 return getSHash().toString();
             }
         } catch (NumberFormatException e) {
+            //todo exit?
             return SERVER_SYNTAX_ERROR;
         }
     }
@@ -103,6 +116,7 @@ public class StateMachine {
         try {
             clientHash = Integer.parseInt(input);
             if (!checkCHash()) {
+                //todo exit?
                 return SERVER_LOGIN_FAILED;
             } else {
                 state = SERVER_OK_STATE;
@@ -113,12 +127,51 @@ public class StateMachine {
         }
     }
 
+    private String firstPos(String input) {
+        robot.parse(input); //todo perform bool check (and then test for charging)
+        state = SECOND_POS;
+        return SERVER_MOVE;
+    }
+
+    private String secondPos(String input) {
+        robot.parse(input);//todo perform bool check (and then test for charging)
+        if (robot.findDirection()) {
+            state = NAVIGATING;
+            return moveMsg(robot.nextMove());
+        }
+        return SERVER_TURN_RIGHT;
+    }
+
+    private String navigate(String input) {
+        robot.parse(input); //todo perform bool check (and then test for charging)
+        return moveMsg(robot.nextMove());
+    }
+
     private Integer getSHash() {
         return (nameHash + keys.get(ID).server) % 65536;
     }
 
     private boolean checkCHash() {
         return (clientHash - keys.get(ID).client) % 65536 == nameHash;
+    }
+
+    private String moveMsg(int i) {
+        switch (i) {
+            case -1 -> {
+                return SERVER_TURN_LEFT;
+            }
+            case 0 -> {
+                return SERVER_MOVE;
+            }
+            case 1 -> {
+                return SERVER_TURN_RIGHT;
+            }
+            case 2 -> {
+                state = ARRIVED;
+                return SERVER_PICK_UP;
+            }
+        }
+        return SERVER_MOVE; //this should happen
     }
 
     static class KeyPair {
