@@ -8,6 +8,6 @@ public enum State {
     FIRST_POS,          // first move
     SECOND_POS,         // 2nd move
     NAVIGATING,         // getting to [0,0]
-    CHARGING,           // robot is charging
+    //    CHARGING,           // robot is charging
     ARRIVED;            // at [0,0]
 }

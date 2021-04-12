@@ -16,7 +16,7 @@ public class ClientHandler implements Runnable {
     public ClientHandler(Socket socket) throws IOException {
         this.socket = socket;
         this.in = new BufferedReader(new InputStreamReader(socket.getInputStream())); //todo does this work?
-//        this.in = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream()))).useDelimiter("\\a\\b"); //todo does this work?
+//        this.in = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream()))).useDelimiter(ending); //todo does this work?
         this.out = new DataOutputStream(socket.getOutputStream());
         this.stateMachine = new StateMachine();
     }
@@ -24,8 +24,9 @@ public class ClientHandler implements Runnable {
     public void run() {
         String line;
         try {
-            socket.setSoTimeout(stateMachine.getTimeout());     //todo
             while (true) {
+                //todo implement preCheck here
+                socket.setSoTimeout(stateMachine.getTimeout());     //todo - here?
                 line = in.readLine();
                 if (line.endsWith("" + 0x7 + 0x8)) {        //todo works?
                     //todo check if sent message is SERVER_OK & if it is send empty msg to get the server to ask for COORDINATES

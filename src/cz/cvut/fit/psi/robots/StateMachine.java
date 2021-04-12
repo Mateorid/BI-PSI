@@ -17,13 +17,15 @@ public class StateMachine {
     public static final String SERVER_SYNTAX_ERROR = "301 SYNTAX ERROR" + 0x7 + 0x8;
     public static final String SERVER_LOGIC_ERROR = "302 LOGIC ERROR" + 0x7 + 0x8;
     public static final String SERVER_KEY_OUT_OF_RANGE_ERROR = "303 KEY OUT OF RANGE" + 0x7 + 0x8;
+    public static final String CLIENT_RECHARGING = "RECHARGING" + 0x7 + 0x8;
+    public static final String CLIENT_FULL_POWER = "FULL POWER" + 0x7 + 0x8;
 
     private static final int TIMEOUT = 1000;            //timeout time in milliseconds
     private static final int TIMEOUT_CHARGING = 5000;   //timeout charging time in milliseconds
     private static final String ending = "\u0007\u0008";
     /*alternative:*/
-//    char TERM_SEQ = (char)7;
-//    char TERM_SEQ2 = (char)8;
+//    static char TERM_SEQ = (char)7;
+//    static char TERM_SEQ2 = (char)8;
 
     private static List<KeyPair> keys;
     private Boolean charging;
@@ -32,14 +34,13 @@ public class StateMachine {
     private Integer ID;
     private Integer nameHash;
     private Integer clientHash;
-//    private String inputBuffer; //todo will have to buffer input for when we dont get the whole message?
-
+    private String buffer = null;
 
     //todo create a class for responses?
 
     public StateMachine() {
         state = State.START;
-        this.charging = false;
+        charging = false;
         keys = new ArrayList<>();
         keys.add(new KeyPair(23019, 32037));
         keys.add(new KeyPair(32037, 29295));
@@ -52,8 +53,35 @@ public class StateMachine {
         return charging ? TIMEOUT_CHARGING : TIMEOUT;
     }
 
+    public String preCheck(String input) {
+        buffer = buffer.concat(input);
+        int len = buffer.length();
+        if (checkLength(len)) {
+            return null;
+        }
+        return SERVER_SYNTAX_ERROR;
+    }
+
     public String next(String input) {
-        //todo this will be the main logic
+        //todo find where im not removing the \a\b and where its necessary to do so ie the robot
+
+        input = buffer.concat(input);
+        buffer = null;
+
+        if (input.equals(CLIENT_RECHARGING)) {
+            charging = true;
+            return null;
+        }
+        if (!checkLength(input.length())) {         //msg is too long
+            return SERVER_SYNTAX_ERROR;
+        }
+        if (charging) {                             //charging logic
+            return input.equals(CLIENT_FULL_POWER) ? null : SERVER_LOGIC_ERROR;
+        }
+        if (input.equals(CLIENT_FULL_POWER)) {      //full power w/o charging
+            return SERVER_SYNTAX_ERROR;
+        }
+
         switch (state) {
             case START -> {
                 return initCheck(input);
@@ -65,6 +93,7 @@ public class StateMachine {
                 return cKeyCheck(input);
             }
             case SERVER_OK_STATE -> {
+                //todo will this trigger on its own or not?
                 state = FIRST_POS;
                 return SERVER_TURN_LEFT;
             }
@@ -77,20 +106,15 @@ public class StateMachine {
             case NAVIGATING -> {
                 return navigate(input);
             }
-            case CHARGING -> {
-            }
             case ARRIVED -> {
+                return SERVER_LOGOUT;
             }
         }
-        return SERVER_SYNTAX_ERROR; //todo?
+        return null; //todo?
     }
 
     private String initCheck(String input) {
-        if (input.length() < 20) {
-            //todo exit?
-            return SERVER_SYNTAX_ERROR;
-        }
-        robot = new Robot(input.substring(0, input.length() - 2));
+        robot = new Robot(input.substring(0, input.length() - 2)); //todo ok?
         nameHash = robot.hash();
         state = S_KEY_SENT;
         return SERVER_KEY_REQUEST;
@@ -98,16 +122,14 @@ public class StateMachine {
 
     private String sKeyCheck(String input) {
         try {
-            ID = Integer.parseInt(input);
+            ID = Integer.parseInt(input.substring(0, input.length() - 2)); //todo ok?
             if (ID < 0 || ID > 4) {
-                //todo exit?
                 return SERVER_KEY_OUT_OF_RANGE_ERROR;
             } else {
                 state = SERVER_CONFIRM;
                 return getSHash().toString();
             }
         } catch (NumberFormatException e) {
-            //todo exit?
             return SERVER_SYNTAX_ERROR;
         }
     }
@@ -128,13 +150,15 @@ public class StateMachine {
     }
 
     private String firstPos(String input) {
-        robot.parse(input); //todo perform bool check (and then test for charging)
+        if (!robot.parse(input))
+            return SERVER_SYNTAX_ERROR;
         state = SECOND_POS;
         return SERVER_MOVE;
     }
 
     private String secondPos(String input) {
-        robot.parse(input);//todo perform bool check (and then test for charging)
+        if (!robot.parse(input))
+            return SERVER_SYNTAX_ERROR;
         if (robot.findDirection()) {
             state = NAVIGATING;
             return moveMsg(robot.nextMove());
@@ -143,7 +167,8 @@ public class StateMachine {
     }
 
     private String navigate(String input) {
-        robot.parse(input); //todo perform bool check (and then test for charging)
+        if (!robot.parse(input))
+            return SERVER_SYNTAX_ERROR;
         return moveMsg(robot.nextMove());
     }
 
@@ -153,6 +178,34 @@ public class StateMachine {
 
     private boolean checkCHash() {
         return (clientHash - keys.get(ID).client) % 65536 == nameHash;
+    }
+
+    private boolean checkLength(int len) {
+        if (charging)
+            return len <= 12;
+
+        switch (state) {
+            //todo w/ or w/o \a\b??
+            case START -> {
+                return len <= 20;
+            }
+            case S_KEY_SENT -> {
+                return len <= 5;
+            }
+            case SERVER_CONFIRM -> {
+                return len <= 7;
+            }
+            case SERVER_OK_STATE,
+                    NAVIGATING,
+                    SECOND_POS,
+                    FIRST_POS -> {
+                return len <= 12;
+            }
+            case ARRIVED -> {
+                return len <= 100;
+            }
+        }
+        return true; //todo true or false
     }
 
     private String moveMsg(int i) {
@@ -171,7 +224,7 @@ public class StateMachine {
                 return SERVER_PICK_UP;
             }
         }
-        return SERVER_MOVE; //this should happen
+        return SERVER_MOVE; //this shouldn't happen
     }
 
     static class KeyPair {

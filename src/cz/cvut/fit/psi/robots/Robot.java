@@ -25,9 +25,7 @@ public class Robot {
 
     //inspired from: https://devqa.io/extract-numbers-string-java-regular-expressions/
     public boolean parse(String input) {
-        if (input.length() > 12) { //todo 12 or less (10)?
-            return false;
-        }
+        //todo string w/ or w/o the \a\b here??
         Matcher m = p.matcher(input);
         if (m.matches()) {
             x = Integer.parseInt(m.group(1));
