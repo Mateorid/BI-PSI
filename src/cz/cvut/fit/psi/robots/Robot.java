@@ -25,12 +25,11 @@ public class Robot {
 
     //inspired from: https://devqa.io/extract-numbers-string-java-regular-expressions/
     public boolean parse(String input) {
-        //todo string w/ or w/o the \a\b here??
         Matcher m = p.matcher(input);
         if (m.matches()) {
             x = Integer.parseInt(m.group(1));
             y = Integer.parseInt(m.group(2));
-            if (first) { //todo save this every time?
+            if (first) {
                 prevX = x;
                 prevY = y;
                 first = false;
@@ -63,11 +62,17 @@ public class Robot {
     public int nextMove() { // -1 -> LEFT | 1 -> RIGHT | 0 -> MOVE | 2 -> at destination
         if (x < 0) { //need to go right
             switch (direction) {
-                case UP, LEFT -> {
+                case UP -> {
+                    direction = RIGHT;
                     return 1;
                 }
                 case DOWN -> {
+                    direction = RIGHT;
                     return -1;
+                }
+                case LEFT -> {
+                    direction = UP;
+                    return 1;
                 }
                 case RIGHT -> {
                     return 0;
@@ -76,14 +81,20 @@ public class Robot {
         }
         if (x > 0) { //need to go left
             switch (direction) {
-                case UP, RIGHT -> {
+                case UP -> {
+                    direction = LEFT;
                     return -1;
                 }
                 case DOWN -> {
+                    direction = LEFT;
                     return 1;
                 }
                 case LEFT -> {
                     return 0;
+                }
+                case RIGHT -> {
+                    direction = UP;
+                    return -1;
                 }
             }
         }
@@ -92,23 +103,35 @@ public class Robot {
                 case UP -> {
                     return 0;
                 }
-                case DOWN, LEFT -> {
+                case DOWN -> {
+                    direction = LEFT;
+                    return 1;
+                }
+                case LEFT -> {
+                    direction = UP;
                     return 1;
                 }
                 case RIGHT -> {
+                    direction = UP;
                     return -1;
                 }
             }
         }
         if (y > 0) { //need to go down
             switch (direction) {
-                case UP, LEFT -> {
+                case UP -> {
+                    direction = LEFT;
                     return -1;
                 }
                 case DOWN -> {
                     return 0;
                 }
+                case LEFT -> {
+                    direction = DOWN;
+                    return -1;
+                }
                 case RIGHT -> {
+                    direction = DOWN;
                     return 1;
                 }
             }

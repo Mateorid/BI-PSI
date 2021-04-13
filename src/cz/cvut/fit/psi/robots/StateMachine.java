@@ -6,26 +6,23 @@ import java.util.List;
 import static cz.cvut.fit.psi.robots.State.*;
 
 public class StateMachine {
-    public static final String SERVER_MOVE = "102 MOVE" + 0x7 + 0x8;
-    public static final String SERVER_TURN_LEFT = "103 TURN LEFT" + 0x7 + 0x8;
-    public static final String SERVER_TURN_RIGHT = "104 TURN RIGHT" + 0x7 + 0x8;
-    public static final String SERVER_PICK_UP = "105 GET MESSAGE" + 0x7 + 0x8;
-    public static final String SERVER_LOGOUT = "106 LOGOUT" + 0x7 + 0x8;
-    public static final String SERVER_KEY_REQUEST = "107 KEY REQUEST" + 0x7 + 0x8;
-    public static final String SERVER_OK = "200 OK" + 0x7 + 0x8;
-    public static final String SERVER_LOGIN_FAILED = "300 LOGIN FAILED" + 0x7 + 0x8;
-    public static final String SERVER_SYNTAX_ERROR = "301 SYNTAX ERROR" + 0x7 + 0x8;
-    public static final String SERVER_LOGIC_ERROR = "302 LOGIC ERROR" + 0x7 + 0x8;
-    public static final String SERVER_KEY_OUT_OF_RANGE_ERROR = "303 KEY OUT OF RANGE" + 0x7 + 0x8;
-    public static final String CLIENT_RECHARGING = "RECHARGING" + 0x7 + 0x8;
-    public static final String CLIENT_FULL_POWER = "FULL POWER" + 0x7 + 0x8;
+    private static final String ending = "\u0007\u0008";
+    public static final String SERVER_MOVE = "102 MOVE" + ending;
+    public static final String SERVER_TURN_LEFT = "103 TURN LEFT" + ending;
+    public static final String SERVER_TURN_RIGHT = "104 TURN RIGHT" + ending;
+    public static final String SERVER_PICK_UP = "105 GET MESSAGE" + ending;
+    public static final String SERVER_LOGOUT = "106 LOGOUT" + ending;
+    public static final String SERVER_KEY_REQUEST = "107 KEY REQUEST" + ending;
+    public static final String SERVER_OK = "200 OK" + ending;
+    public static final String SERVER_LOGIN_FAILED = "300 LOGIN FAILED" + ending;
+    public static final String SERVER_SYNTAX_ERROR = "301 SYNTAX ERROR" + ending;
+    public static final String SERVER_LOGIC_ERROR = "302 LOGIC ERROR" + ending;
+    public static final String SERVER_KEY_OUT_OF_RANGE_ERROR = "303 KEY OUT OF RANGE" + ending;
+    public static final String CLIENT_RECHARGING = "RECHARGING" + ending;
+    public static final String CLIENT_FULL_POWER = "FULL POWER" + ending;
 
     private static final int TIMEOUT = 1000;            //timeout time in milliseconds
     private static final int TIMEOUT_CHARGING = 5000;   //timeout charging time in milliseconds
-    private static final String ending = "\u0007\u0008";
-    /*alternative:*/
-//    static char TERM_SEQ = (char)7;
-//    static char TERM_SEQ2 = (char)8;
 
     private static List<KeyPair> keys;
     private Boolean charging;
@@ -34,7 +31,7 @@ public class StateMachine {
     private Integer ID;
     private Integer nameHash;
     private Integer clientHash;
-    private String buffer = null;
+    private String buffer = "";
 
     //todo create a class for responses?
 
@@ -63,10 +60,10 @@ public class StateMachine {
     }
 
     public String next(String input) {
-        //todo find where im not removing the \a\b and where its necessary to do so ie the robot
-
         input = buffer.concat(input);
-        buffer = null;
+        buffer = "";
+        //todo delete
+//        System.out.println("input is: " + input);
 
         if (input.equals(CLIENT_RECHARGING)) {
             charging = true;
@@ -81,6 +78,8 @@ public class StateMachine {
         if (input.equals(CLIENT_FULL_POWER)) {      //full power w/o charging
             return SERVER_SYNTAX_ERROR;
         }
+        //todo this
+//        input = input.substring(0, input.length() - 2);
 
         switch (state) {
             case START -> {
@@ -114,15 +113,24 @@ public class StateMachine {
     }
 
     private String initCheck(String input) {
-        robot = new Robot(input.substring(0, input.length() - 2)); //todo ok?
+
+        //todo delete
+//        System.out.println("initCheck start");
+
+
+        robot = new Robot(input);
         nameHash = robot.hash();
         state = S_KEY_SENT;
+
+
+        //todo delete
+//        System.out.println("initCheck end");
         return SERVER_KEY_REQUEST;
     }
 
     private String sKeyCheck(String input) {
         try {
-            ID = Integer.parseInt(input.substring(0, input.length() - 2)); //todo ok?
+            ID = Integer.parseInt(input);
             if (ID < 0 || ID > 4) {
                 return SERVER_KEY_OUT_OF_RANGE_ERROR;
             } else {

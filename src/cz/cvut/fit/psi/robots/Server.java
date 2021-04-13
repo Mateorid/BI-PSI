@@ -7,14 +7,14 @@ import java.net.*;
 //Server class from: https://www.geeksforgeeks.org/multithreaded-servers-in-java/
 class Server {
     public static void main(String[] args) {
-        ServerSocket socket = null;
+        ServerSocket server = null;
         try {
-            socket = new ServerSocket(6969);
-            socket.setReuseAddress(true);
+            server = new ServerSocket(6969);
+//            serverSocket.setReuseAddress(true);
 
             while (true) {
-                Socket client = socket.accept();
-                System.out.println("New client connected: " + client.getInetAddress().getHostAddress());
+                Socket client = server.accept();
+//                System.out.println("New client connected: " + client.getInetAddress().getHostAddress());
 
                 ClientHandler clientSock = new ClientHandler(client);
                 new Thread(clientSock).start();
@@ -22,9 +22,9 @@ class Server {
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (socket != null) {
+            if (server != null) {
                 try {
-                    socket.close();
+                    server.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
