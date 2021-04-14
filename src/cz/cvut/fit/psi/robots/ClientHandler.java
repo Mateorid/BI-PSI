@@ -9,101 +9,70 @@ import java.util.Scanner;
 public class ClientHandler implements Runnable {
     private static final String ending = "\u0007\u0008";
     Socket socket;
-    //    BufferedReader in;
-    private final Scanner in;
+    BufferedReader in;
+    //    private final Scanner in;
+//    OutputStreamWriter out;
     PrintWriter out;
     StateMachine stateMachine;
 
     public ClientHandler(Socket socket) throws IOException {
         this.socket = socket;
-//        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream())); //todo does this work?
-        this.in = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream()))).useDelimiter(ending); //todo does this work?
+        this.in = new BufferedReader(new InputStreamReader(socket.getInputStream())); //todo does this work?
+//        this.in = new Scanner(new BufferedReader(new InputStreamReader(socket.getInputStream()))).useDelimiter(ending); //todo does this work?
         this.out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
+//        this.out = new OutputStreamWriter(socket.getOutputStream());
+//        this.out = new PrintWriter(socket.getOutputStream(), true);
         this.stateMachine = new StateMachine();
     }
 
     public void run() {
-//        String buffer = "";
-//        String output = "";
-//        long xdd = 0;
-//        char tmp;
+        String buffer = "";
+        String output = "";
         String line = "";
         try {
-            while (true) {
-                socket.setSoTimeout(stateMachine.getTimeout());     //todo - here?
+            //todo server doesn't time out for normal msg? (14) / implement obstacle dodging (20 or 25) :)
 
-//                if (in.ready()) {
-//                while (in.ready()) {
-//                        buffer = buffer.concat(String.valueOf((char) in.read()));
-//                        System.out.println(buffer);
-//                        if (test2) {
-//                            test = true;
-//                            test2 = false;
-//                        }
-//                }
-//                if (buffer.endsWith(ending)) {
-//                    output = stateMachine.next(buffer);
-//                    buffer="";
+            while (true) {
+                socket.setSoTimeout(stateMachine.getTimeout());
+
+                if (in.ready()) {
+                    buffer = buffer.concat(String.valueOf((char) in.read()));
+//                    System.out.println("buffer is: " + buffer);
+                }
+                if (buffer.endsWith(ending)) {
+                    output = stateMachine.next(buffer.substring(0, buffer.length() - 2));
+                    buffer = "";
+                }
 //                } else {
 //                    output = stateMachine.preCheck(buffer);
-//                    buffer="";
+//                    buffer = "";
 //                }
-
-                if (in.hasNext()) {
-                    line = stateMachine.next(in.next());
-//                    System.out.println("writing chars: " + line);
-                    if (!line.equals(""))
-                        out.write(line);
-                    else
-                        continue;
-                    if (line.equals(StateMachine.SERVER_SYNTAX_ERROR) ||
-                            line.equals(StateMachine.SERVER_LOGIN_FAILED) ||
-                            line.equals(StateMachine.SERVER_LOGIC_ERROR) ||
-                            line.equals(StateMachine.SERVER_KEY_OUT_OF_RANGE_ERROR)) {
+                if (output != "") {
+                    if (output.equals(StateMachine.SERVER_SYNTAX_ERROR) ||
+                            output.equals(StateMachine.SERVER_LOGIN_FAILED) ||
+                            output.equals(StateMachine.SERVER_LOGIC_ERROR) ||
+                            output.equals(StateMachine.SERVER_KEY_OUT_OF_RANGE_ERROR)) {
+                        System.out.println("Server error: " + output);
+                        out.write(output + ending);
                         out.flush();
-//                        System.out.println("flushed");
+                        exit();
                         break;
                     }
+                    System.out.println("Output is: " + output);
+                    out.write(output + ending);
                     out.flush();
-//                    System.out.println("flushed");
+                    if (output.equals(StateMachine.SERVER_OK)) {
+                        output = stateMachine.next("");
+                        out.write(output + ending);
+                        out.flush();
+                    } else if (output.equals(StateMachine.SERVER_LOGOUT)) {
+                        exit();
+                        break;
+                    }
+                    output = "";
                 }
 
-//                else {
-//                    try {
-//                        line = in.next();
-//                    } catch (Exception e) {
-////                        e.printStackTrace();
-//                        line = "";
-//                        continue;
-//                    }
-//                    out.writeChars(stateMachine.preCheck(line));
-//                    line = stateMachine.preCheck(in.next());
-//                    if (line.equals(StateMachine.SERVER_LOGIN_FAILED) ||
-//                            line.equals(StateMachine.SERVER_SYNTAX_ERROR) ||
-//                            line.equals(StateMachine.SERVER_LOGIC_ERROR) ||
-//                            line.equals(StateMachine.SERVER_KEY_OUT_OF_RANGE_ERROR)) {
-//                        out.flush();
-//                        break;
-//                    }
-//                    out.flush();
-//                }
-
-
-//                line = in.readLine();
-//                if (line.endsWith("" + 0x7 + 0x8)) {        //todo works?
-//                    todo check if sent message is SERVER_OK & if it is send empty msg to get the server to ask for COORDINATES
-//                    out.writeChars(stateMachine.next(line));
-//                    out.flush();
-//                } else {//todo this is wrong since it can send only parts of the message :(
-//                    out.writeChars(StateMachine.SERVER_SYNTAX_ERROR);
-//                    out.flush();
-//                    exit();
-//                    break;
-//                }
-//            } catch (InterruptedException | IOException interruptedException) {
-//            interruptedException.printStackTrace();
             }
-//        exit();
         } catch (Exception e) {
             System.out.println("Exception: " + e);
             e.printStackTrace();

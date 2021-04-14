@@ -6,20 +6,20 @@ import java.util.List;
 import static cz.cvut.fit.psi.robots.State.*;
 
 public class StateMachine {
-    private static final String ending = "\u0007\u0008";
-    public static final String SERVER_MOVE = "102 MOVE" + ending;
-    public static final String SERVER_TURN_LEFT = "103 TURN LEFT" + ending;
-    public static final String SERVER_TURN_RIGHT = "104 TURN RIGHT" + ending;
-    public static final String SERVER_PICK_UP = "105 GET MESSAGE" + ending;
-    public static final String SERVER_LOGOUT = "106 LOGOUT" + ending;
-    public static final String SERVER_KEY_REQUEST = "107 KEY REQUEST" + ending;
-    public static final String SERVER_OK = "200 OK" + ending;
-    public static final String SERVER_LOGIN_FAILED = "300 LOGIN FAILED" + ending;
-    public static final String SERVER_SYNTAX_ERROR = "301 SYNTAX ERROR" + ending;
-    public static final String SERVER_LOGIC_ERROR = "302 LOGIC ERROR" + ending;
-    public static final String SERVER_KEY_OUT_OF_RANGE_ERROR = "303 KEY OUT OF RANGE" + ending;
-    public static final String CLIENT_RECHARGING = "RECHARGING" + ending;
-    public static final String CLIENT_FULL_POWER = "FULL POWER" + ending;
+    //    private static final String ending = "\u0007\u0008";
+    public static final String SERVER_MOVE = "102 MOVE";
+    public static final String SERVER_TURN_LEFT = "103 TURN LEFT";
+    public static final String SERVER_TURN_RIGHT = "104 TURN RIGHT";
+    public static final String SERVER_PICK_UP = "105 GET MESSAGE";
+    public static final String SERVER_LOGOUT = "106 LOGOUT";
+    public static final String SERVER_KEY_REQUEST = "107 KEY REQUEST";
+    public static final String SERVER_OK = "200 OK";
+    public static final String SERVER_LOGIN_FAILED = "300 LOGIN FAILED";
+    public static final String SERVER_SYNTAX_ERROR = "301 SYNTAX ERROR";
+    public static final String SERVER_LOGIC_ERROR = "302 LOGIC ERROR";
+    public static final String SERVER_KEY_OUT_OF_RANGE_ERROR = "303 KEY OUT OF RANGE";
+    public static final String CLIENT_RECHARGING = "RECHARGING";
+    public static final String CLIENT_FULL_POWER = "FULL POWER";
 
     private static final int TIMEOUT = 1000;            //timeout time in milliseconds
     private static final int TIMEOUT_CHARGING = 5000;   //timeout charging time in milliseconds
@@ -62,8 +62,6 @@ public class StateMachine {
     public String next(String input) {
         input = buffer.concat(input);
         buffer = "";
-        //todo delete
-//        System.out.println("input is: " + input);
 
         if (input.equals(CLIENT_RECHARGING)) {
             charging = true;
@@ -78,8 +76,6 @@ public class StateMachine {
         if (input.equals(CLIENT_FULL_POWER)) {      //full power w/o charging
             return SERVER_SYNTAX_ERROR;
         }
-        //todo this
-//        input = input.substring(0, input.length() - 2);
 
         switch (state) {
             case START -> {
@@ -92,7 +88,7 @@ public class StateMachine {
                 return cKeyCheck(input);
             }
             case SERVER_OK_STATE -> {
-                //todo will this trigger on its own or not?
+                //todo will this trigger on its own or not? - will not XD
                 state = FIRST_POS;
                 return SERVER_TURN_LEFT;
             }
@@ -115,7 +111,7 @@ public class StateMachine {
     private String initCheck(String input) {
 
         //todo delete
-//        System.out.println("initCheck start");
+        System.out.println("initCheck start with: " + input);
 
 
         robot = new Robot(input);
@@ -129,8 +125,11 @@ public class StateMachine {
     }
 
     private String sKeyCheck(String input) {
+
+        //todo delete
+        System.out.println("sKeyCheck start with: " + input);
         try {
-            ID = Integer.parseInt(input);
+            ID = Integer.parseInt(input.trim());
             if (ID < 0 || ID > 4) {
                 return SERVER_KEY_OUT_OF_RANGE_ERROR;
             } else {
@@ -138,6 +137,7 @@ public class StateMachine {
                 return getSHash().toString();
             }
         } catch (NumberFormatException e) {
+            System.out.println("error: " + e);
             return SERVER_SYNTAX_ERROR;
         }
     }
@@ -145,6 +145,7 @@ public class StateMachine {
     private String cKeyCheck(String input) {
         try {
             clientHash = Integer.parseInt(input);
+            System.out.println("CKEY in: " + clientHash);
             if (!checkCHash()) {
                 //todo exit?
                 return SERVER_LOGIN_FAILED;
@@ -185,7 +186,7 @@ public class StateMachine {
     }
 
     private boolean checkCHash() {
-        return (clientHash - keys.get(ID).client) % 65536 == nameHash;
+        return (nameHash + keys.get(ID).client) % 65536 == clientHash;
     }
 
     private boolean checkLength(int len) {
@@ -193,24 +194,23 @@ public class StateMachine {
             return len <= 12;
 
         switch (state) {
-            //todo w/ or w/o \a\b??
             case START -> {
-                return len <= 20;
+                return len <= 18;
             }
             case S_KEY_SENT -> {
-                return len <= 5;
+                return len <= 3;
             }
             case SERVER_CONFIRM -> {
-                return len <= 7;
+                return len <= 5;
             }
             case SERVER_OK_STATE,
                     NAVIGATING,
                     SECOND_POS,
                     FIRST_POS -> {
-                return len <= 12;
+                return len <= 10;
             }
             case ARRIVED -> {
-                return len <= 100;
+                return len <= 98;
             }
         }
         return true; //todo true or false
