@@ -6,7 +6,7 @@ import java.util.List;
 import static cz.cvut.fit.psi.robots.State.*;
 
 public class StateMachine {
-    //    private static final String ending = "\u0007\u0008";
+    private static final String ending = "\u0007\u0008";
     public static final String SERVER_MOVE = "102 MOVE";
     public static final String SERVER_TURN_LEFT = "103 TURN LEFT";
     public static final String SERVER_TURN_RIGHT = "104 TURN RIGHT";
@@ -25,15 +25,13 @@ public class StateMachine {
     private static final int TIMEOUT_CHARGING = 5000;   //timeout charging time in milliseconds
 
     private static List<KeyPair> keys;
-    private Boolean charging;
+    private boolean charging;
     private State state;
     private Robot robot;
     private Integer ID;
     private Integer nameHash;
     private Integer clientHash;
     private String buffer = "";
-
-    //todo create a class for responses?
 
     public StateMachine() {
         state = State.START;
@@ -51,27 +49,41 @@ public class StateMachine {
     }
 
     public String preCheck(String input) {
+        int index;
+        int len;
+        String out;
+
         buffer = buffer.concat(input);
-        int len = buffer.length();
-        if (checkLength(len)) {
-            return null;
+        index = buffer.indexOf(ending);
+        if (index == -1) {
+            len = buffer.length();
+            if (!checkLength(len) && !buffer.startsWith("REC")) {
+                return SERVER_SYNTAX_ERROR;
+            }
+            return "";
+        } else {
+            out = buffer.substring(0, index);
+            len = out.length();
+            if (!checkLength(len) && !buffer.startsWith("REC")) {
+                return SERVER_SYNTAX_ERROR;
+            }
+            buffer = buffer.substring(index + 2);
+            return next(out);
         }
-        return SERVER_SYNTAX_ERROR;
     }
 
     public String next(String input) {
-        input = buffer.concat(input);
-        buffer = "";
 
         if (input.equals(CLIENT_RECHARGING)) {
             charging = true;
-            return null;
+            return "";
         }
         if (!checkLength(input.length())) {         //msg is too long
             return SERVER_SYNTAX_ERROR;
         }
         if (charging) {                             //charging logic
-            return input.equals(CLIENT_FULL_POWER) ? null : SERVER_LOGIC_ERROR;
+            charging = false;
+            return input.equals(CLIENT_FULL_POWER) ? "" : SERVER_LOGIC_ERROR;
         }
         if (input.equals(CLIENT_FULL_POWER)) {      //full power w/o charging
             return SERVER_SYNTAX_ERROR;
@@ -88,9 +100,8 @@ public class StateMachine {
                 return cKeyCheck(input);
             }
             case SERVER_OK_STATE -> {
-                //todo will this trigger on its own or not? - will not XD
                 state = FIRST_POS;
-                return SERVER_TURN_LEFT;
+                return SERVER_TURN_RIGHT;
             }
             case FIRST_POS -> {
                 return firstPos(input);
@@ -105,29 +116,17 @@ public class StateMachine {
                 return SERVER_LOGOUT;
             }
         }
-        return null; //todo?
+        return "";
     }
 
     private String initCheck(String input) {
-
-        //todo delete
-        System.out.println("initCheck start with: " + input);
-
-
         robot = new Robot(input);
         nameHash = robot.hash();
         state = S_KEY_SENT;
-
-
-        //todo delete
-//        System.out.println("initCheck end");
         return SERVER_KEY_REQUEST;
     }
 
     private String sKeyCheck(String input) {
-
-        //todo delete
-        System.out.println("sKeyCheck start with: " + input);
         try {
             ID = Integer.parseInt(input.trim());
             if (ID < 0 || ID > 4) {
@@ -145,9 +144,7 @@ public class StateMachine {
     private String cKeyCheck(String input) {
         try {
             clientHash = Integer.parseInt(input);
-            System.out.println("CKEY in: " + clientHash);
             if (!checkCHash()) {
-                //todo exit?
                 return SERVER_LOGIN_FAILED;
             } else {
                 state = SERVER_OK_STATE;
@@ -168,11 +165,16 @@ public class StateMachine {
     private String secondPos(String input) {
         if (!robot.parse(input))
             return SERVER_SYNTAX_ERROR;
-        if (robot.findDirection()) {
-            state = NAVIGATING;
-            return moveMsg(robot.nextMove());
+        switch (robot.findDirection()) {
+            case 1:
+                state = NAVIGATING;
+                return moveMsg(robot.nextMove());
+            case 0:
+                return SERVER_TURN_RIGHT;
+            case -1:
+                return SERVER_MOVE;
         }
-        return SERVER_TURN_RIGHT;
+        return SERVER_MOVE;
     }
 
     private String navigate(String input) {
@@ -191,29 +193,29 @@ public class StateMachine {
 
     private boolean checkLength(int len) {
         if (charging)
-            return len <= 12;
+            return len <= 19;
 
         switch (state) {
             case START -> {
-                return len <= 18;
+                return len <= 19;
             }
             case S_KEY_SENT -> {
-                return len <= 3;
+                return len <= 4;
             }
             case SERVER_CONFIRM -> {
-                return len <= 5;
+                return len <= 6;
             }
             case SERVER_OK_STATE,
                     NAVIGATING,
                     SECOND_POS,
                     FIRST_POS -> {
-                return len <= 10;
+                return len <= 11;
             }
             case ARRIVED -> {
-                return len <= 98;
+                return len <= 99;
             }
         }
-        return true; //todo true or false
+        return true;
     }
 
     private String moveMsg(int i) {
